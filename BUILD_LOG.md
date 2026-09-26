@@ -1,0 +1,26 @@
+# Build log
+
+`gtm-teardown` was built in daily sessions from 2026-09-14 to 2026-09-26. Each session ran in an ephemeral cloud environment with no access to the previous day's files, so each day rebuilt the tool from the running spec, added one capability, dogfooded it against example vendor copy, and locked whatever broke with a named regression test. The daily builds were handed over as zip files; none reached GitHub until this repository was consolidated and pushed on 2026-09-26. The commit history therefore starts on 2026-09-26; the dated record below is the actual build history.
+
+One thing held every single day: a pattern that looked right on paper failed on real vendor phrasing. That is the whole design lesson of this tool.
+
+| day | date | added | bug found on real copy (→ regression test) |
+|---|---|---|---|
+| 1 | 2026-09-14 Mon | `run` — single-company teardown: heuristic classifier (pricing model, GTM motion, themes), Claude backend with offline fallback, README, MIT license, worked example. Never shipped: lost when the environment recycled. | — |
+| 2 | 2026-09-15 Tue | Rebuilt from spec. `batch` — CSV in, one report per company out. | Bare "enterprise" keyword misclassified custom-quote pricing as tiered SaaS → `test_day2_*` |
+| 3 | 2026-09-16 Wed | `compare` — head-to-head classification table, shared/unique themes, positioning-wedge note. CI workflow, `pyproject.toml`. | "no self-serve plans" matched the bare self-serve pattern (negation ignored) → `test_day3_*` |
+| 4 | 2026-09-17 Thu | `rank` — ICP-fit score against a weighted, swappable rubric; table or CSV output. | "save 40%" missed: `\d` instead of `\d+` → `test_day4_*` |
+| 5 | 2026-09-18 Fri | `report` — Markdown landscape write-up (pricing / motion / theme distribution) with an auto-generated "essay seed" takeaway; `--mode rank` renders the ranking as a table. First prose output. | Regression tests added for Days 2–4 |
+| 6 | 2026-09-19 Sat | `essay` — full multi-section draft (hook, landscape, 2–3 company vignettes with pulled claims, thesis, sign-off) with bracketed spans marking where the author's voice has to go. | (a) fixed-width negation window leaked "no " from the previous sentence into the next clause → clause-scoped negation; (b) sales-led phrase list missed "talk to our sales team", "talking to sales" → `test_day6a_*`, `test_day6b_*` |
+| 7 | 2026-09-20 Sun | `snapshot` / `diff` — dated, hashed snapshots of a company's copy in a JSON store; drift report between the two most recent; identical copy is a no-op. First command that tracks a competitor over time. | (a) "works with our sales team" (noun phrase, no verb) matched nothing; (b) "Tiered plans: Starter, Explorer, Pro, Enterprise" didn't match; (c) `compare` checked identical-themes before pricing/motion, masking real gaps → order pricing→motion→themes; (d) `report` could name "unknown" the dominant class → `test_day7a–d_*` |
+| 8 | 2026-09-21 Mon | `outreach` — personalised cold-outreach opener from a finding (theme > motion > pricing hook priority); refuses to output a generic line when there is no signal. | (a) sentence-scoped negation still leaked across `--` / `;` joined clauses; (b) "save you 30%" / "save customers 40%" required verb and percentage to be adjacent → `test_day8a_*`, `test_day8b_*` |
+| 9 | 2026-09-23 Wed | `digest` — weekly triage fusing rank + drift + openers for the top N; silent baseline on first run; skips no-signal companies instead of faking hooks. Test suite restructured into six files. | `build_digest` received pre-classified objects instead of raw copy and crashed hashing a non-string in the snapshot step → `test_day9_*` |
+| 10 | 2026-09-24 Thu | `brief` — one-page call prep for a single account: ICP score + drift vs last snapshot + opening line. | (a) "saving 40%" / "saved 40%" missed (verb inflection); (b) "talk to our sales team for pricing" missed (inserted "team") → `test_day10a_*`, `test_day10b_*` |
+| 11 | 2026-09-25 Fri | Finalize pass: all 11 commands consolidated and cleaned, README with positioning and honest status, push checklist prepared. | — |
+| 12 | 2026-09-26 Sat | `watch` — scans a whole watchlist against the snapshot store and reports only drift above a significance bar (high = pricing/motion change, medium = theme-only), most urgent first. | "up and running in minutes" double-counted as self-serve motion evidence, producing false "hybrid" reads → theme only → `test_day12_*` |
+| — | 2026-09-26 Sat | Consolidated into this repository and pushed to GitHub. 75 tests. | — |
+
+## Open items
+
+- Validate the `--llm` backend against a live API key (never available in the build environment).
+- The paired essay. The tool has produced essay-seed material since Day 5 and full drafts since Day 6; the written, published piece is the other half of the compound artifact and does not exist yet.
