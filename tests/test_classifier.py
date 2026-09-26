@@ -46,12 +46,15 @@ def test_hybrid_motion_needs_both_sides():
 
 
 def test_themes_are_ranked_by_evidence_count():
-    copy = ("SOC 2 and HIPAA compliant with audit logs and encryption. "
-            "Integrates with Slack. Fast setup.")
+    # One clause = one hit (Day 13), so three separate security sentences outrank one
+    # integrations sentence, however many vendor names that sentence lists.
+    copy = ("SOC 2 Type II certified. HIPAA compliant. Audit logs on every action. "
+            "Integrates with Slack, Salesforce, HubSpot, Zendesk and Jira. Fast setup.")
     c = classify_text("A", copy)
     assert c.themes[0] == "security_compliance"
     assert "integration_ecosystem" in c.themes
-    assert c.theme_counts()["security_compliance"] >= 3
+    assert c.theme_counts()["security_compliance"] == 3
+    assert c.theme_counts()["integration_ecosystem"] == 1
 
 
 def test_no_signal_gives_unknowns_and_no_confidence():

@@ -156,3 +156,96 @@ def test_day12_up_and_running_in_minutes_is_not_motion_evidence():
     assert c.gtm_motion == "sales_led"
     assert "ease_of_use" in c.themes
     assert all(e.category != "self_serve" for e in c.motion_evidence)
+
+
+# --- Day 13 (2026-09-26, first run against real pricing pages) ---------------- #
+
+def test_day13a_price_pattern_after_a_space_was_dead_code():
+    """'\\b\\$' never matches between a space and '$', so '$185/mo' and '$40/user' matched nothing."""
+    c = classify_text("Clay", "Launch (starting at $185/mo) - the best way to start.")
+    assert c.pricing_model == "tiered_saas"
+    assert any("$" in e.pattern for e in c.pricing_evidence)
+    c2 = classify_text("A", "Simple pricing: $40/user.")
+    assert c2.pricing_model == "seat_based"
+
+
+def test_day13b_credits_and_pay_only_when_are_usage_signals():
+    """Lindy/Clay/Fin phrase usage pricing as 'credits' and 'pay only when' — no 'usage-based' anywhere."""
+    assert classify_text("Fin", "Pay only when Fin delivers value.").pricing_model == "usage_based"
+    lindy = classify_text("Lindy", "Credits measure the work Lindy does. You only use them when Lindy is working.")
+    assert any(e.category == "usage_based" for e in lindy.pricing_evidence)
+    clay = classify_text("Clay", "Data Credits are used when you purchase data from Clay's marketplace.")
+    assert clay.pricing_model == "usage_based"
+
+
+def test_day13c_cost_reduction_nominalisations_and_verbs():
+    """Only 'reduce/cut/lower ... costs' matched; real pages say 'reduction in costs',
+    'Decrease costs per lead', 'Save costs', 'support costs go down'."""
+    for copy in ("65% reduction in costs.", "Decrease costs per lead.", "Save costs.",
+                 "As Fin handles more conversations, your support costs go down."):
+        assert "roi_cost_savings" in classify_text("A", copy).themes, copy
+
+
+def test_day13d_without_supervision_is_autonomy_not_a_negation():
+    """'execute complex tasks without supervision to drive results autonomously' (11x):
+    'without' was negating 'autonomously' five words later."""
+    c = classify_text("11x", "Independent, proactive, and able to execute complex tasks without supervision to drive results autonomously.")
+    assert "autonomy_agents" in c.themes
+    assert not any(e.category == "autonomy_agents" for e in c.negated)
+    # 'without' still negates the noun right after it.
+    assert classify_text("B", "Deploy without a sales team.").gtm_motion == "unknown"
+
+
+def test_day13e_one_clause_is_one_hit_per_theme():
+    """A clause listing five integration names counted five times and out-ranked the
+    theme the page actually leads with."""
+    c = classify_text("A", "Works with Salesforce, HubSpot, Slack, Zendesk and Jira via API and SDK.")
+    assert c.theme_counts()["integration_ecosystem"] == 1
+
+
+def test_day13f_schedule_your_custom_demo_is_sales_led():
+    assert classify_text("Ada", "Schedule your custom demo.").gtm_motion == "sales_led"
+
+
+def test_day13g_csv_url_column_fetches_live_copy(tmp_path):
+    """A companies CSV can carry a url column instead of (or as well as) copy."""
+    from gtm_teardown.sources import read_companies_csv
+    p = tmp_path / "c.csv"
+    p.write_text("company,url,copy\nA,https://a.example/pricing,\nB,https://b.example/,Pasted copy wins\nC,,\n")
+    fetched = {"https://a.example/pricing": "Usage-based pricing."}
+    rows = read_companies_csv(str(p), fetcher=lambda u: fetched[u])
+    assert rows == [("A", "Usage-based pricing."), ("B", "Pasted copy wins")]
+
+
+def test_day13g_csv_url_fetch_failure_skips_row_not_batch(tmp_path, capsys):
+    from gtm_teardown.sources import read_companies_csv
+    p = tmp_path / "c.csv"
+    p.write_text("company,url\nA,https://dead.example/\nB,https://ok.example/\n")
+
+    def fetcher(u):
+        if "dead" in u:
+            raise OSError("connection refused")
+        return "Book a demo."
+    assert read_companies_csv(str(p), fetcher=fetcher) == [("B", "Book a demo.")]
+    assert "could not fetch" in capsys.readouterr().err
+
+
+def test_day13h_report_does_not_call_a_tie_a_leader():
+    """Three pricing models at 1 each were reported as 'usage-based leads (1 of 6)'."""
+    cs = [classify_text("A", "Usage-based pricing."), classify_text("B", "Per-seat pricing."),
+          classify_text("C", "Tiered plans: Starter, Pro."), classify_text("D", "Hello."), classify_text("E", "Hi."),
+          classify_text("F", "Hey.")]
+    report = render_report(cs)
+    assert "no single pricing model leads" in report
+    assert "usage-based leads" not in report
+
+
+def test_day13i_essay_seed_does_not_say_most_on_a_tie():
+    from gtm_teardown.reports import essay_seed
+    cs = [classify_text("A", "Usage-based pricing. Book a demo."), classify_text("B", "Per-seat pricing. Book a demo."),
+          classify_text("C", "Tiered plans: Starter, Pro. Book a demo."), classify_text("D", "Book a demo."),
+          classify_text("E", "Book a demo."), classify_text("F", "Book a demo.")]
+    seed = essay_seed(cs)
+    assert "Most of this set sells" not in seed
+    assert "publish no readable pricing model" in seed or "split evenly" in seed
+    assert "most of this set runs sales-led" in seed

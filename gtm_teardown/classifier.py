@@ -22,6 +22,11 @@ Design rules learned the hard way (each one has a named regression test):
    ("save *you* 30%", "talk to our sales *team* for pricing").
 5. Phrases that both motions use ("up and running in minutes") are **themes**,
    not motion evidence. Counting them as motion evidence manufactures "hybrid".
+6. One clause is one piece of evidence. A clause that lists five integration names
+   counts once for "integrations", so long feature lists can't out-rank the theme a
+   page actually leads with (Day 13, found on real pricing pages).
+7. ``\b`` before ``$`` never matches after a space, so a price pattern written that way
+   is dead code. Price patterns use a lookbehind instead (Day 13).
 """
 
 from __future__ import annotations
@@ -92,6 +97,13 @@ PRICING_PATTERNS: Dict[str, List[re.Pattern]] = {
         r"\bper (?:token|api call|call|request|minute|message|conversation|resolution|task|run|action|outcome)s?\b",
         r"\bcredit[- ]based\b",
         r"\boutcome[- ]based pricing\b",
+        # Day 13 (real pages): "Pay only when Fin delivers value", "Credits measure the work
+        # Lindy does", "Data Credits are used when you purchase data", "per credit".
+        r"\b(?:pay|paying) only (?:when|for|if)\b",
+        r"\bonly pay (?:when|for|if)\b",
+        r"\bcredits? (?:measure|are (?:used|consumed|deducted|spent)|cover)\b",
+        r"\bper credit\b",
+        r"\bpay[- ]per[- ](?:use|outcome|resolution|task|run|action|call|seat)\b",
     ),
     "tiered_saas": _rx(
         # Day 7: "Tiered plans: Starter, Explorer, Pro, Enterprise" must match.
@@ -99,7 +111,11 @@ PRICING_PATTERNS: Dict[str, List[re.Pattern]] = {
         # Day 2: a bare "enterprise" is NOT evidence; "enterprise plan/tier" is.
         r"\b(?:starter|basic|free|pro|professional|team|business|growth|plus|premium|scale|enterprise)\s+(?:plan|tier)s?\b",
         r"\bplans? (?:start|starting) (?:at|from)\b",
-        r"\b\$\s?\d[\d,]*(?:\.\d+)?\s*(?:/|per)\s*(?:mo|month|year|yr)\b",
+        # Day 13: "Launch (starting at $185/mo)" — tier name + price, no word "plan".
+        r"\b(?:starting|starts) at \$",
+        # Day 13: was "\b\$..." — \b never matches between a space and "$", so the
+        # pattern was dead code. Lookbehind instead.
+        r"(?<![\w$])\$\s?\d[\d,]*(?:\.\d+)?\s*(?:/|per)\s*(?:mo|month|year|yr)\b",
         r"\bfree (?:plan|tier|forever)\b",
         r"\b(?:monthly|annual) (?:and|or) (?:annual|monthly) (?:plans|billing)\b",
         r"\bchoose (?:a|your|the right) plan\b",
@@ -110,7 +126,7 @@ PRICING_PATTERNS: Dict[str, List[re.Pattern]] = {
     "seat_based": _rx(
         r"\bper[- ](?:seat|user|editor|member)\b",
         r"\bseat[- ]based\b",
-        r"\b\$\s?\d[\d,]*(?:\.\d+)?\s*(?:/|per)\s*(?:seat|user)\b",
+        r"(?<![\w$])\$\s?\d[\d,]*(?:\.\d+)?\s*(?:/|per)\s*(?:seat|user)\b",  # Day 13: see tiered note
         r"\bunlimited (?:seats|users)\b",
     ),
     "custom_quote": _rx(
@@ -145,7 +161,8 @@ MOTION_PATTERNS: Dict[str, List[re.Pattern]] = {
         # (ease_of_use), not motion evidence; sales-led vendors say it too.
     ),
     "sales_led": _rx(
-        r"\b(?:book|schedule|request|get) (?:a )?(?:live |personalized |custom )?demo\b",
+        # Day 13: "Schedule your custom demo" (Ada) — "your" as well as "a".
+        r"\b(?:book|schedule|request|get) (?:a |your )?(?:live |personalized |custom )?demo\b",
         # Day 6: broadened — "talk to our sales team", "talking to sales".
         r"\btalk(?:ing)? (?:to|with) (?:our |the |a |an )?(?:sales|team|expert|specialist|solutions engineer)(?: team)?\b",
         r"\bspeak (?:to|with) (?:an? |our )?(?:expert|specialist|sales|team)\b",
@@ -171,7 +188,10 @@ THEME_PATTERNS: Dict[str, List[re.Pattern]] = {
         # Day 10 ("saving 40%", "saved 40%"): verb inflection + up to 3 inserted words.
         r"\bsav(?:e|es|ed|ing)\b(?:\s+\w+){0,3}?\s+\d+\s?%",
         r"\bcost savings?\b",
-        r"\b(?:reduc|cut|lower)(?:e|es|ed|ing|s)?\b(?:\s+\w+){0,3}?\s+costs?\b",
+        # Day 13 (real pages): nominalisation and more verbs — "65% reduction in costs"
+        # (Decagon), "Decrease costs per lead" / "Save costs" (11x), "support costs go down" (Fin).
+        r"\b(?:reduc(?:e|es|ed|ing|tion)|cut(?:s|ting)?|lower(?:s|ed|ing)?|decreas(?:e|es|ed|ing)|sav(?:e|es|ed|ing|ings))\b(?:\s+\w+){0,3}?\s+(?:in )?costs?\b",
+        r"\bcosts? (?:go|goes|went|come|comes) down\b",
         r"\bpayback\b",
         r"\b\d+x (?:roi|return)\b",
         r"\bcheaper\b",
@@ -248,12 +268,13 @@ THEME_PATTERNS: Dict[str, List[re.Pattern]] = {
     "autonomy_agents": _rx(
         r"\bagentic\b",
         r"\bautonomous(?:ly)?\b",
-        r"\bAI (?:agents?|employees?|workers?|teammates?|coworkers?|workforce)\b",
+        r"\bAI (?:agents?|employees?|workers?|teammates?|coworkers?|workforce|sdrs?|bdrs?|concierge|phone agents?)\b",
         r"\bagents? (?:that|which|who)\b",
-        r"\bdigital (?:workers?|employees?|teammates?)\b",
+        r"\bdigital (?:workers?|employees?|teammates?|workforce)\b",
         r"\bend[- ]to[- ]end\b",
         r"\bhands[- ]off\b",
         r"\bwithout human (?:intervention|input|involvement)\b",
+        r"\bwithout (?:human )?supervision\b",  # Day 13: 11x
         r"\bmulti[- ]agent\b",
         r"\bautopilot\b",
         r"\bresolves?\b(?:\s+\w+){0,3}?\s+(?:on its own|automatically|autonomously)\b",
@@ -304,6 +325,11 @@ _NEGATION_RX = re.compile(
     re.IGNORECASE,
 )
 NEGATION_WINDOW_WORDS = 5
+# Day 13: "without" binds tightly to the noun right after it. In "execute tasks without
+# supervision to drive results autonomously" (11x) it negates "supervision", not the
+# autonomy claim five words later. A wider window is right for "no"/"not"/"don't".
+_TIGHT_CUES = {"without": 2}
+_TIGHT_RX = {cue: re.compile(r"(?<![\w-])" + re.escape(cue) + r"(?![\w-])", re.IGNORECASE) for cue in _TIGHT_CUES}
 
 # Clause boundaries: sentence punctuation (but not a decimal point), ";", ":",
 # "--", em/en dashes, a spaced hyphen, newlines.  Day 6 + Day 8 regression tests.
@@ -389,7 +415,11 @@ def is_negated(clause: str, match_start: int) -> bool:
     prefix = clause[:match_start]
     words = prefix.split()
     window = " ".join(words[-NEGATION_WINDOW_WORDS:])
-    return bool(_NEGATION_RX.search(window))
+    for cue, n in _TIGHT_CUES.items():
+        if _TIGHT_RX[cue].search(" ".join(words[-n:])):
+            return True
+    loose = _NEGATION_RX.sub(lambda m: "" if m.group(0).lower() in _TIGHT_CUES else m.group(0), window)
+    return bool(_NEGATION_RX.search(loose))
 
 
 def _scan(text: str, patterns: Dict[str, List[re.Pattern]]) -> Tuple[Dict[str, List[Evidence]], List[Evidence]]:
@@ -399,15 +429,22 @@ def _scan(text: str, patterns: Dict[str, List[re.Pattern]]) -> Tuple[Dict[str, L
     for clause in split_clauses(text):
         snippet = clause if len(clause) <= 140 else clause[:137] + "..."
         for category, rxs in patterns.items():
+            # Day 13: one clause = one piece of evidence per category. The first
+            # non-negated pattern wins; a list of five vendor names is still one hit.
+            first_negated = None
             for rx in rxs:
                 m = rx.search(clause)
                 if not m:
                     continue
                 ev = Evidence(category=category, snippet=snippet, pattern=rx.pattern)
                 if is_negated(clause, m.start()):
-                    negated.append(ev)
-                else:
-                    hits[category].append(ev)
+                    first_negated = first_negated or ev
+                    continue
+                hits[category].append(ev)
+                break
+            else:
+                if first_negated:
+                    negated.append(first_negated)
     return hits, negated
 
 

@@ -23,10 +23,21 @@ def html_to_text(raw: str) -> str:
     return re.sub(r"\n\s*\n+", "\n", text).strip()
 
 
-def fetch_url(url: str, timeout: int = 20) -> str:
-    req = Request(url, headers={"User-Agent": "gtm-teardown/0.12 (+https://github.com/ananyapradhan02/gtm-teardown)"})
+def fetch_url_with_meta(url: str, timeout: int = 20) -> Tuple[str, str]:
+    """Fetch a page; return (visible text, final URL after redirects)."""
+    req = Request(url, headers={"User-Agent": "gtm-teardown/0.13 (+https://github.com/ananyapradhan02/gtm-teardown)"})
     with urlopen(req, timeout=timeout) as resp:  # noqa: S310 - user-supplied URL by design
-        return html_to_text(resp.read().decode("utf-8", errors="replace"))
+        return html_to_text(resp.read().decode("utf-8", errors="replace")), resp.geturl()
+
+
+def fetch_url(url: str, timeout: int = 20) -> str:
+    text, final = fetch_url_with_meta(url, timeout)
+    # Day 13 (real pages): Ada's /pricing/ redirects to /demo/. A pricing URL that lands
+    # somewhere else is itself a GTM finding — say so instead of silently reading the demo page.
+    if "pricing" in url.lower() and "pricing" not in final.lower():
+        print(f"[gtm-teardown] note: {url} redirected to {final} — no public pricing page is a sales-led signal",
+              file=sys.stderr)
+    return text
 
 
 def read_copy(text: str | None = None, file: str | None = None, url: str | None = None) -> str:
@@ -41,9 +52,11 @@ def read_copy(text: str | None = None, file: str | None = None, url: str | None 
     return fetch_url(url)  # type: ignore[arg-type]
 
 
-def read_companies_csv(path: str) -> List[Tuple[str, str]]:
-    """CSV with a ``company`` column and a ``copy`` (or ``text``) column.
-    Rows with an empty copy are skipped with a warning."""
+def read_companies_csv(path: str, fetcher=None) -> List[Tuple[str, str]]:
+    """CSV with a ``company`` column and a ``copy`` (or ``text``) column, and/or a ``url``
+    column (Day 13). When a row has no copy but has a URL, the page is fetched live.
+    Rows with neither are skipped with a warning. ``fetcher`` is injectable for tests."""
+    fetcher = fetcher or fetch_url
     rows: List[Tuple[str, str]] = []
     with open(path, newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -53,13 +66,21 @@ def read_companies_csv(path: str) -> List[Tuple[str, str]]:
         if "company" not in fields:
             raise ValueError(f"{path}: needs a 'company' column (has {reader.fieldnames})")
         copy_col = fields.get("copy") or fields.get("text")
-        if not copy_col:
-            raise ValueError(f"{path}: needs a 'copy' (or 'text') column")
+        url_col = fields.get("url")
+        if not copy_col and not url_col:
+            raise ValueError(f"{path}: needs a 'copy' (or 'text') column, or a 'url' column")
         for row in reader:
             company = (row.get(fields["company"]) or "").strip()
-            copy = (row.get(copy_col) or "").strip()
             if not company:
                 continue
+            copy = (row.get(copy_col) or "").strip() if copy_col else ""
+            url = (row.get(url_col) or "").strip() if url_col else ""
+            if not copy and url:
+                try:
+                    copy = fetcher(url)
+                except Exception as exc:  # noqa: BLE001 - one bad URL must not kill the batch
+                    print(f"[gtm-teardown] skipping {company}: could not fetch {url} ({exc})", file=sys.stderr)
+                    continue
             if not copy:
                 print(f"[gtm-teardown] skipping {company}: empty copy", file=sys.stderr)
                 continue

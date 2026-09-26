@@ -56,9 +56,17 @@ def _dominance_sentence(kind: str, counter: Counter, n: int) -> str:
     if key is None:
         return f"None of the {n} companies gives a readable {kind} signal in the copy sampled."
     share = f"{count} of {n}"
+    # Day 13 (real pages): a three-way tie at 1 each was reported as "usage-based leads".
+    tied = [k for k, v in counter.items() if k != UNKNOWN and v == count]
+    if len(tied) > 1:
+        lead = "no single " + kind + " leads: " + ", ".join(label(k) for k in tied) + f" each {share}"
+    else:
+        lead = f"{label(key)} leads ({share})"
     if unknown_n > count:
-        return (f"Where the {kind} is readable at all, {label(key)} leads ({share}), "
+        return (f"Where the {kind} is readable at all, {lead}, "
                 f"but {unknown_n} of {n} companies give no {kind} signal — the bigger finding is the silence.")
+    if len(tied) > 1:
+        return f"There is {lead}."
     return f"The dominant {kind} is {label(key)} ({share})."
 
 
@@ -75,26 +83,36 @@ def _dist_table(counter: Counter, n: int, col: str) -> str:
 # report
 # --------------------------------------------------------------------------- #
 
+def _lead_clause(kind: str, counter: Counter, n: int, verb: str) -> str:
+    """Honest one-clause summary of a distribution (Day 13: no 'most' on a 1-of-6 tie)."""
+    key, count = dominant(counter)
+    unknown_n = counter.get(UNKNOWN, 0)
+    if key is None:
+        return f"nobody in this set publishes a readable {kind}"
+    tied = [k for k, v in counter.items() if k != UNKNOWN and v == count]
+    if unknown_n >= max(count, (n + 1) // 2):
+        return f"{unknown_n} of {n} publish no readable {kind} at all"
+    if len(tied) > 1:
+        return f"the readable {kind}s split evenly across " + ", ".join(label(k) for k in tied)
+    if count * 2 > n:
+        return f"most of this set {verb} {label(key)} ({count} of {n})"
+    return f"the most common {kind} is {label(key)} ({count} of {n})"
+
+
 def essay_seed(cs: Sequence[Classification]) -> str:
     """One paragraph naming the open positioning wedge in this landscape."""
     ls = landscape(cs)
-    p_key, _ = dominant(ls.pricing)
-    m_key, _ = dominant(ls.motion)
     top_theme = ls.themes.most_common(1)[0][0] if ls.themes else None
     claimed = set(ls.themes)
     from .classifier import THEMES  # local import keeps module import light
     unclaimed = [t for t in THEMES if t not in claimed]
-    bits = []
-    if p_key and m_key:
-        bits.append(f"Most of this set sells {label(p_key)} through a {label(m_key)} motion")
-    elif p_key:
-        bits.append(f"Most of this set sells {label(p_key)}")
-    elif m_key:
-        bits.append(f"Most of this set runs a {label(m_key)} motion")
-    else:
-        bits.append("This set gives almost no readable pricing or motion signal")
+    first = _lead_clause("pricing model", ls.pricing, ls.n, "sells")
+    second = _lead_clause("GTM motion", ls.motion, ls.n, "runs")
+    bits = [first[0].upper() + first[1:] + "; " + second]
     if top_theme:
-        bits.append(f"and everyone leans on {label(top_theme)} ({ls.themes[top_theme]} of {ls.n} companies)")
+        share = ls.themes[top_theme]
+        who = "everyone" if share == ls.n else ("nearly everyone" if share * 3 >= ls.n * 2 else f"{share} of {ls.n}")
+        bits.append(f"and {who} leans on {label(top_theme)}" + ("" if who.endswith(str(ls.n)) else f" ({share} of {ls.n})"))
     seed = ", ".join(bits) + "."
     if unclaimed:
         seed += (f" The uncontested ground is {label(unclaimed[0])}"
