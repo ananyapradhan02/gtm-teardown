@@ -3,4 +3,4 @@
 Built in public by Ananya Pradhan (agentic-AI GTM). MIT licensed.
 """
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"

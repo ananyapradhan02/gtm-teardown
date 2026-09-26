@@ -1,6 +1,6 @@
 # Build log
 
-`gtm-teardown` was built in daily sessions from 2026-09-14 to 2026-09-26. Each session ran in an ephemeral cloud environment with no access to the previous day's files, so each day rebuilt the tool from the running spec, added one capability, dogfooded it against example vendor copy, and locked whatever broke with a named regression test. The daily builds were handed over as zip files; none reached GitHub until this repository was consolidated and pushed on 2026-09-26. The commit history therefore starts on 2026-09-26; the dated record below is the actual build history.
+`gtm-teardown` has been built in daily sessions since 2026-09-14. Each session ran in an ephemeral cloud environment with no access to the previous day's files, so each day rebuilt the tool from the running spec, added one capability, dogfooded it against example vendor copy, and locked whatever broke with a named regression test. The daily builds were handed over as zip files; none reached GitHub until this repository was consolidated and pushed on 2026-09-26. The commit history therefore starts on 2026-09-26; the dated record below is the actual build history.
 
 One thing held every single day: a pattern that looked right on paper failed on real vendor phrasing. That is the whole design lesson of this tool.
 
@@ -19,6 +19,7 @@ One thing held every single day: a pattern that looked right on paper failed on 
 | 11 | 2026-09-25 Fri | Finalize pass: all 11 commands consolidated and cleaned, README with positioning and honest status, push checklist prepared. | — |
 | 12 | 2026-09-26 Sat | `watch` — scans a whole watchlist against the snapshot store and reports only drift above a significance bar (high = pricing/motion change, medium = theme-only), most urgent first. | "up and running in minutes" double-counted as self-serve motion evidence, producing false "hybrid" reads → theme only → `test_day12_*` |
 | — | 2026-09-26 Sat | Consolidated into this repository and pushed to GitHub. 75 tests. | — |
+| 13 | 2026-09-26 Sat | First run against **real pages** (Intercom Fin, Decagon, Ada, Lindy, 11x, Clay), fetched through the browser since the build environment can't reach the sites. `url` column in companies CSVs (fetched live when `copy` is empty; one bad URL skips the row, not the batch); a `/pricing` URL that redirects elsewhere is flagged as a sales-led signal. `examples/real/` — URL-only watchlist plus what the tool produced from those pages today. | (a) `\b\$` never matches after a space, so `$185/mo` / `$40/user` price patterns were dead code; (b) usage pricing phrased as "credits" / "pay only when"; (c) cost-reduction nominalisations ("reduction in costs", "decrease costs", "costs go down"); (d) "without supervision" negated an autonomy claim five words later — "without" now binds to the next two words; (e) a clause listing five vendor names counted five times — one clause is now one hit per theme; (f) "Schedule your custom demo"; (g) report and essay seed called a three-way tie at 1 of 6 a leader → `test_day13a–i_*` |
 
 ## Open items
 

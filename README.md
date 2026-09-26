@@ -20,14 +20,14 @@ Built in public by [Ananya Pradhan](https://github.com/ananyapradhan02) — grow
 git clone https://github.com/ananyapradhan02/gtm-teardown
 cd gtm-teardown
 pip install -e ".[dev]"      # add ,llm for the Claude backend
-python -m pytest             # 75 tests
+python -m pytest             # 85 tests
 ```
 
 Python 3.9+. `pip install -e .` gives you the `gtm-teardown` command; `python -m gtm_teardown` works without installing.
 
 ## The twelve commands
 
-All examples run against `examples/companies.csv` — five illustrative agentic-AI vendors (fictional, written to sound like real vendor copy). A companies CSV needs two columns: `company` and `copy`.
+All examples run against `examples/companies.csv` — five illustrative agentic-AI vendors (fictional, written to sound like real vendor copy). A companies CSV needs a `company` column plus `copy` (pasted text) and/or `url` (fetched live when `copy` is empty). `examples/real/companies.csv` is a URL-only watchlist of six real agentic-AI companies; see [`examples/real/`](examples/real/) for what the tool read off their pages on 2026-09-26.
 
 **One company**
 
@@ -75,6 +75,8 @@ It is a heuristic classifier — regexes over the copy — with rules that came 
 3. **A bare keyword is not evidence.** "enterprise" alone says nothing about pricing; "enterprise plan" or "tiered plans" does.
 4. **Inflections and inserted words are the common case.** "saving 40%", "save *you* 30%", "talk to our sales *team* for pricing" are what pages actually say.
 5. **Phrases both motions use are themes, not motion evidence.** "Up and running in minutes" is ease-of-use, whichever way the company sells; counting it as self-serve evidence manufactures false "hybrid" reads.
+6. **One clause is one piece of evidence.** A sentence listing five integration names counts once, so long feature lists can't out-rank the theme a page actually leads with.
+7. **Real pages phrase things sideways.** Usage pricing shows up as "credits" and "pay only when"; cost claims as "reduction in costs"; a `/pricing` URL that redirects to a demo form is itself a sales-led finding, and the fetcher says so.
 
 Every one of those rules exists because a specific bug was found on a specific day; each has a named regression test in `tests/test_regressions.py`. Evidence snippets are always the clause the match was found in, so any classification can be checked against the page.
 
@@ -86,10 +88,10 @@ Every one of those rules exists because a specific bug was found on a specific d
 
 ## Project status
 
-- 12 subcommands, 75 tests, CI on Python 3.9 / 3.11 / 3.12.
-- Built daily between 2026-09-14 and 2026-09-26 in short sessions; the day-by-day record — what was added, and which bug was found on real copy that day — is in [`BUILD_LOG.md`](BUILD_LOG.md).
+- 12 subcommands, 85 tests, CI on Python 3.9 / 3.11 / 3.12.
+- Built daily from 2026-09-14 in short sessions; the day-by-day record — what was added, and which bug was found on real copy that day — is in [`BUILD_LOG.md`](BUILD_LOG.md).
 - **Open:** the `--llm` backend is written and its validation/fallback paths are tested, but it has not yet been exercised against a live API key. Treat the heuristic backend as the tested path.
-- The example dataset is illustrative. Point the tool at real pricing pages with `--url`, or paste copy into a CSV.
+- Day 13 was the first run against real pricing pages (Intercom Fin, Decagon, Ada, Lindy, 11x, Clay): seven bugs found and locked. The illustrative dataset stays for tests; `examples/real/` is the live watchlist.
 
 ## License
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gtm-teardown"
-version = "0.12.0"
+version = "0.13.0"
 description = "Classify how agentic-AI companies go to market from their public copy: pricing model, GTM motion, messaging themes; compare, rank, track drift, draft outreach."
 readme = "README.md"
 requires-python = ">=3.9"
