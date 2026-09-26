@@ -1,0 +1,37 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Test
+        run: python -m pytest
+      - name: Smoke (every subcommand against the example dataset)
+        run: |
+          gtm-teardown run --company "Northwind Agents" --csv examples/companies.csv --format table
+          gtm-teardown batch --csv examples/companies.csv --out /tmp/reports
+          gtm-teardown compare --csv examples/companies.csv "Northwind Agents" "Lumen Ops"
+          gtm-teardown rank --csv examples/companies.csv
+          gtm-teardown report --csv examples/companies.csv --out /tmp/landscape.md
+          gtm-teardown essay --csv examples/companies.csv --out /tmp/essay.md
+          gtm-teardown snapshot --company "Lumen Ops" --csv examples/companies.csv --store /tmp/s.json
+          gtm-teardown diff --company "Lumen Ops" --store /tmp/s.json
+          gtm-teardown outreach --company "Northwind Agents" --csv examples/companies.csv
+          gtm-teardown digest --csv examples/companies.csv --store /tmp/s.json --top 3
+          gtm-teardown brief --company "Harbor Copilot" --csv examples/companies.csv --store /tmp/s.json
+          gtm-teardown watch --csv examples/companies.csv --store /tmp/s.json

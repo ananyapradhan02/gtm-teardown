@@ -1,0 +1,17 @@
+{
+  "name": "product-led fit (example of a swappable rubric)",
+  "pricing_model": { "tiered_saas": 3, "usage_based": 2, "seat_based": 2, "custom_quote": 0 },
+  "gtm_motion": { "self_serve": 3, "hybrid": 2, "sales_led": 0 },
+  "themes": {
+    "ease_of_use": 3,
+    "speed_time_to_value": 2,
+    "integration_ecosystem": 2,
+    "autonomy_agents": 1,
+    "accuracy_reliability": 1,
+    "roi_cost_savings": 1,
+    "security_compliance": 0,
+    "scale_enterprise": 0,
+    "human_in_the_loop": 0
+  },
+  "theme_cap": 3
+}
